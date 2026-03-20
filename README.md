@@ -1,6 +1,8 @@
 # E2E Report Composer
 
-設定ファイルに記載した Web アプリ URL に対して、Playwright で E2E テストを実行する構成です。
+E2E Report Composer は、Playwright を使って Web アプリの E2E テストを実行し、フルページスクリーンショット付きの HTML レポートをまとめて生成するための構成です。
+
+1 つの画面ファイルに複数テストを書きながら、画面単位でレポートを集約できるようにしています。
 
 ## 仕様に合わせたポイント
 
@@ -11,6 +13,13 @@
 - 各テストで操作前・操作中・操作後のフルページスクリーンショットを保存
 - テスト結果は `playwright-report/<テスト名>/index.html` と `playwright-report/<テスト名>/data/*.png` に出力
 - Playwright の実行成果物も `playwright-report/.artifacts` に集約し、`test-results` は作成しない
+
+## このプロジェクトでできること
+
+- 設定ファイルの URL を差し替えるだけで対象 Web アプリを切り替え
+- 画面単位でテストケースを整理し、1 つのレポートに集約
+- 各ケースの操作前・操作中・操作後をフルページ画像で保存
+- 実行ログ用成果物と閲覧用レポートを同じ playwright-report 配下に集約
 
 ## セットアップ
 
