@@ -1,0 +1,15 @@
+{
+  "name": "playwright-starter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "E2E Report Composer",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.2",
+    "@types/node": "^25.5.0"
+  }
+}
