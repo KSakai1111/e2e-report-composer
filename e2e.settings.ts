@@ -1,5 +1,5 @@
 export const appUnderTest = {
-  url: 'https://example.com',
+  url: 'https://localhost:44371/',
   waitUntil: 'domcontentloaded' as const,
   navigationTimeoutMs: 30_000,
   viewport: {

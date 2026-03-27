@@ -17,6 +17,7 @@ export type ScenarioStep = {
   action: string;
   expected: string;
   captureDuring?: boolean;
+  screenshot?: string; // ステップ実行後に取得するスクリーンショットのファイル名
   run: (context: ScenarioContext) => Promise<void>;
 };
 
@@ -35,6 +36,7 @@ type StepResult = {
   expected: string;
   status: StepStatus;
   errorMessage?: string;
+  screenshot?: ScreenshotResult; // ステップごとのスクリーンショット
 };
 
 type ScreenshotResult = {
@@ -83,13 +85,14 @@ export function createScenarioTest(definition: ScenarioDefinition): void {
       await page.goto(appUnderTest.url, { waitUntil: appUnderTest.waitUntil });
       await expect(page.locator('body')).toBeVisible();
 
-      await captureScreenshot({
-        page,
-        reportContext,
-        phase: 'before',
-        label: '操作前',
-        fileName: definition.screenshotNames.before
-      });
+      // 操作前のスクリーンショットは不要（コメントアウト）
+      // await captureScreenshot({
+      //   page,
+      //   reportContext,
+      //   phase: 'before',
+      //   label: '操作前',
+      //   fileName: definition.screenshotNames.before
+      // });
 
       for (const [index, step] of definition.steps.entries()) {
         await runStep({
@@ -103,34 +106,36 @@ export function createScenarioTest(definition: ScenarioDefinition): void {
         });
       }
 
-      if (!reportContext.screenshots.during) {
-        await captureScreenshot({
-          page,
-          reportContext,
-          phase: 'during',
-          label: '操作中',
-          fileName: definition.screenshotNames.during
-        });
-      }
+      // 操作中のスクリーンショットは不要（コメントアウト）
+      // if (!reportContext.screenshots.during) {
+      //   await captureScreenshot({
+      //     page,
+      //     reportContext,
+      //     phase: 'during',
+      //     label: '操作中',
+      //     fileName: definition.screenshotNames.during
+      //   });
+      // }
     } catch (error) {
       failureMessage = toErrorMessage(error);
       throw error;
     } finally {
-      await captureScreenshotSafely({
-        page,
-        reportContext,
-        phase: 'during',
-        label: '操作中',
-        fileName: definition.screenshotNames.during
-      });
+      // 操作中・操作後のスクリーンショットは不要（コメントアウト）
+      // await captureScreenshotSafely({
+      //   page,
+      //   reportContext,
+      //   phase: 'during',
+      //   label: '操作中',
+      //   fileName: definition.screenshotNames.during
+      // });
 
-      await captureScreenshotSafely({
-        page,
-        reportContext,
-        phase: 'after',
-        label: '操作後',
-        fileName: definition.screenshotNames.after
-      });
+      // await captureScreenshotSafely({
+      //   page,
+      //   reportContext,
+      //   phase: 'after',
+      //   label: '操作後',
+      //   fileName: definition.screenshotNames.after
+      // });
 
       await writeScenarioReport({
         definition,
@@ -162,18 +167,54 @@ async function runStep(args: {
 
     stepResults[index].status = 'passed';
 
-    if (step.captureDuring && !reportContext.screenshots.during) {
-      await captureScreenshot({
-        page,
-        reportContext,
-        phase: 'during',
-        label: `操作中: ${step.name}`,
-        fileName: duringFileName
+    // ステップごとのスクリーンショットを取得
+    if (step.screenshot) {
+      const filePath = path.join(reportContext.dataDir, step.screenshot);
+      await page.screenshot({
+        path: filePath,
+        fullPage: true
       });
+      
+      stepResults[index].screenshot = {
+        label: `Step ${index + 1}: ${step.name}`,
+        fileName: step.screenshot,
+        relativePath: `data/${step.screenshot}`
+      };
     }
+
+    // captureDuringフラグによる操作中スクリーンショットは不要（コメントアウト）
+    // if (step.captureDuring && !reportContext.screenshots.during) {
+    //   await captureScreenshot({
+    //     page,
+    //     reportContext,
+    //     phase: 'during',
+    //     label: `操作中: ${step.name}`,
+    //     fileName: duringFileName
+    //   });
+    // }
   } catch (error) {
     stepResults[index].status = 'failed';
     stepResults[index].errorMessage = toErrorMessage(error);
+    
+    // エラー時もスクリーンショットを取得（可能であれば）
+    if (step.screenshot && !page.isClosed()) {
+      try {
+        const filePath = path.join(reportContext.dataDir, step.screenshot);
+        await page.screenshot({
+          path: filePath,
+          fullPage: true
+        });
+        
+        stepResults[index].screenshot = {
+          label: `Step ${index + 1}: ${step.name} (失敗時)`,
+          fileName: step.screenshot,
+          relativePath: `data/${step.screenshot}`
+        };
+      } catch {
+        // スクリーンショット取得失敗時は無視
+      }
+    }
+    
     throw error;
   }
 }
@@ -276,6 +317,13 @@ async function writeScenarioReport(args: {
 
 async function cleanupScenarioFiles(definition: ScenarioDefinition, dataDir: string): Promise<void> {
   const filesToRemove = Object.values(definition.screenshotNames).map((fileName) => path.join(dataDir, fileName));
+  
+  // ステップごとのスクリーンショットも削除対象に追加
+  for (const step of definition.steps) {
+    if (step.screenshot) {
+      filesToRemove.push(path.join(dataDir, step.screenshot));
+    }
+  }
 
   await Promise.all(filesToRemove.map((filePath) => rm(filePath, { force: true })));
 }
@@ -318,6 +366,7 @@ function renderGroupReportHtml(groupReport: StoredGroupReport): string {
             <th>Action</th>
             <th>Expected Result</th>
             <th>Status</th>
+            <th>Screenshot</th>
           </tr>
         </thead>
         <tbody>
@@ -328,16 +377,13 @@ function renderGroupReportHtml(groupReport: StoredGroupReport): string {
             <td>${escapeHtml(step.action)}</td>
             <td>${escapeHtml(step.expected)}</td>
             <td>${escapeHtml(step.status)}${step.errorMessage ? `<br />${escapeHtml(step.errorMessage)}` : ''}</td>
+            <td>${step.screenshot ? `<a href="${escapeHtml(step.screenshot.relativePath)}" target="_blank">${escapeHtml(step.screenshot.fileName)}</a>` : '-'}</td>
           </tr>`
             )
             .join('')}
         </tbody>
       </table>
-      <div class="gallery">
-        ${renderScreenshot(scenario.screenshots.before)}
-        ${renderScreenshot(scenario.screenshots.during)}
-        ${renderScreenshot(scenario.screenshots.after)}
-      </div>
+      ${renderStepScreenshots(scenario.steps)}
     </section>`;
     })
     .join('');
@@ -423,6 +469,21 @@ function renderScreenshot(screenshot?: ScreenshotResult): string {
   }
 
   return `<article class="shot"><img src="${escapeHtml(screenshot.relativePath)}" alt="${escapeHtml(screenshot.label)}" /><p>${escapeHtml(screenshot.label)}: ${escapeHtml(screenshot.fileName)}</p></article>`;
+}
+
+function renderStepScreenshots(steps: StepResult[]): string {
+  const stepScreenshots = steps.filter((step) => step.screenshot);
+  
+  if (stepScreenshots.length === 0) {
+    return '';
+  }
+  
+  return `
+    <h3>ステップごとのスクリーンショット</h3>
+    <div class="gallery">
+      ${stepScreenshots.map((step) => renderScreenshot(step.screenshot)).join('')}
+    </div>
+  `;
 }
 
 function toErrorMessage(error: unknown): string {
