@@ -85,14 +85,6 @@ export function createScenarioTest(definition: ScenarioDefinition): void {
       await page.goto(appUnderTest.url, { waitUntil: appUnderTest.waitUntil });
       await expect(page.locator('body')).toBeVisible();
 
-      // 操作前のスクリーンショットは不要（コメントアウト）
-      // await captureScreenshot({
-      //   page,
-      //   reportContext,
-      //   phase: 'before',
-      //   label: '操作前',
-      //   fileName: definition.screenshotNames.before
-      // });
 
       for (const [index, step] of definition.steps.entries()) {
         await runStep({
@@ -106,36 +98,10 @@ export function createScenarioTest(definition: ScenarioDefinition): void {
         });
       }
 
-      // 操作中のスクリーンショットは不要（コメントアウト）
-      // if (!reportContext.screenshots.during) {
-      //   await captureScreenshot({
-      //     page,
-      //     reportContext,
-      //     phase: 'during',
-      //     label: '操作中',
-      //     fileName: definition.screenshotNames.during
-      //   });
-      // }
     } catch (error) {
       failureMessage = toErrorMessage(error);
       throw error;
     } finally {
-      // 操作中・操作後のスクリーンショットは不要（コメントアウト）
-      // await captureScreenshotSafely({
-      //   page,
-      //   reportContext,
-      //   phase: 'during',
-      //   label: '操作中',
-      //   fileName: definition.screenshotNames.during
-      // });
-
-      // await captureScreenshotSafely({
-      //   page,
-      //   reportContext,
-      //   phase: 'after',
-      //   label: '操作後',
-      //   fileName: definition.screenshotNames.after
-      // });
 
       await writeScenarioReport({
         definition,
@@ -182,16 +148,6 @@ async function runStep(args: {
       };
     }
 
-    // captureDuringフラグによる操作中スクリーンショットは不要（コメントアウト）
-    // if (step.captureDuring && !reportContext.screenshots.during) {
-    //   await captureScreenshot({
-    //     page,
-    //     reportContext,
-    //     phase: 'during',
-    //     label: `操作中: ${step.name}`,
-    //     fileName: duringFileName
-    //   });
-    // }
   } catch (error) {
     stepResults[index].status = 'failed';
     stepResults[index].errorMessage = toErrorMessage(error);
